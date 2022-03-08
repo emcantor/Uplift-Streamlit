@@ -1,4 +1,18 @@
 [
+    {   "pre_post": "prelaunch",
+        "app_name": "11880 Auskunft",
+        "os": "Android",
+        "page": "One Time",
+        "campaign_names": "",
+        "start_date": "",
+        "end_date": "2022-03-07",
+        "end_date_action": "2022-03-07",
+        "window": "",
+        "frequency": "",
+        "controlgroup": 20,
+        "email": "",
+        "status": "done",
+        "url": "gsheet something"},
     {
         "pre_post": "prelaunch",
         "app_name": "11880 Auskunft",
@@ -31,23 +45,7 @@
         "status": "done",
         "url": "gsheet something"
     },
-{
-        "pre_post": "prelaunch",
-        "app_name": "11880 Auskunft",
-        "os": "Android",
-        "page": "One Time",
-        "campaign_names": "",
-        "start_date": "",
-        "end_date": "2022-03-07",
-        "end_date_action": "2022-03-07",
-        "window": "",
-        "frequency": "",
-        "controlgroup": 20,
-        "email": "",
-        "status": "done",
-        "url": "gsheet something"
-    },
-{
+    {
         "pre_post": "prelaunch",
         "app_name": "11880 Auskunft",
         "os": "Android",
@@ -64,35 +62,3 @@
         "url": "gsheet something"
     }
 ]
-{
-    "pre_post": "prelaunch",
-    "app_name": "11880 Auskunft",
-    "os": "Android",
-    "page": "One Time",
-    "campaign_names": "",
-    "start_date": "",
-    "end_date": "2022-03-07",
-    "end_date_action": "2022-03-07",
-    "window": "",
-    "frequency": "",
-    "controlgroup": 20,
-    "email": "",
-    "status": "done",
-    "url": "gsheet something"
-}
-{
-    "pre_post": "prelaunch",
-    "app_name": "11880 Auskunft",
-    "os": "Android",
-    "page": "One Time",
-    "campaign_names": "",
-    "start_date": "",
-    "end_date": "2022-03-07",
-    "end_date_action": "2022-03-07",
-    "window": "",
-    "frequency": "",
-    "controlgroup": 20,
-    "email": "",
-    "status": "done",
-    "url": "gsheet something"
-}
