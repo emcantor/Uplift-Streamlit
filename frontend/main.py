@@ -51,18 +51,22 @@ with st.container():
     
 
 def to_json():
-    with open('params.json', 'w') as f:
-        json.dump({
+    # Create new entry for Uplift
+    with open('../uplifts_data.json') as json_file:
+        uplifts_data = json.load(json_file)
+    uplifts_data[str(pd.to_datetime('now'))] = {
             "pre_post": pre_post,
             "app_name": app_name,
             "os": os,
             "page": page,
             "campaign_names": ','.join(campaign_name),
             'start_date': '',
-    'end_date' : str(end_date),
-    'end_date_action':  str(end_date_action),
-    'window' : window,
-    'frequency' : frequency,
-    'controlgroup': controlgroup,
-    'email': email
-        }, f)
+            'end_date' : str(end_date),
+            'end_date_action':  str(end_date_action),
+            'window' : window,
+            'frequency' : frequency,
+            'controlgroup': controlgroup,
+            'email': email
+        }
+    with open('params.json', 'w') as f:
+        json.dump(uplifts_data, f)
