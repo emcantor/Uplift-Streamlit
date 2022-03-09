@@ -9,3 +9,4 @@ def display():
     df = pd.read_json('all_uplifts.json')
     style = df[['app_name', 'os', 'start_date', 'end_date', 'status','url']]
     st.write(style)
+    
