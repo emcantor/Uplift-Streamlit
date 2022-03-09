@@ -1,0 +1,19 @@
+{
+  "2022-03-09 00:48:21.698360'": {
+    "postlaunch_prelaunch": "postlaunch",
+    "uplift_type": "custom_actions",
+    "bundle_a": "com.gigantic.clawee",
+    "bundle_i": "com.gigantic.clawee",
+    "begin_date": "2022-03-01",
+    "end_date": "2022-03-02",
+    "end_date_targeting": "2022-03-02",
+    "campaign_ids": [34522, 34523, 34524, 34507, 34508, 34509, 37618, 38022],
+    "control_group_size": 0.2,
+    "target_custom_action": "af_purchase",
+    "campaigns_to_group": [[34522, 34523]],
+    "email_to": "nicolas@adikteev.com",
+    "targeting_list_ids": [],
+    "status": "pulling_user_lists",
+    "uplift_key": "1067820762521616595"
+  }
+}
