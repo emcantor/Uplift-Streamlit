@@ -7,5 +7,5 @@ import pandas as pd
 def display():
     st.header('Uplifts')
     df = pd.read_json('all_uplifts.json')
-    style = df[['app_name','status','url']]
+    style = df[['app_name', 'os', 'start_date', 'end_date', 'status','url']]
     st.write(style)
