@@ -36,5 +36,21 @@
     "window": null,
     "frequency": null,
     "dow": null
+  },
+  "804125565513625156": {
+    "pre_post": "prelaunch",
+    "app_name": "11880 Auskunft",
+    "os": "Android",
+    "page": "One Time",
+    "campaign_names": "",
+    "start_date": "",
+    "end_date": "2022-03-09",
+    "end_date_action": "2022-03-09",
+    "window": null,
+    "frequency": null,
+    "controlgroup": 20,
+    "email": "",
+    "status": "to_run",
+    "time_added": "2022-03-09 23:56:18.711124"
   }
 }
