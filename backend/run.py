@@ -33,8 +33,13 @@ for uplift_key, ud in uplifts_data.items():
     # Create raw_data folder and logfile
     os.mkdir('raw_data/' + uplift_key)
     open('../logs/' + uplift_key + '.log', 'a').close()
-    logging.basicConfig(level=logging.INFO, filename='../logs/' + uplift_key + '.log', filemode='w')
+    logging.basicConfig(level=logging.INFO, filename='../logs/' + uplift_key + '.log', filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     log = logging.getLogger(__name__)
+    
+    # Pull bundle_ids
+    bundles = sql_tools.pull_from_presto("select os, bundle_identifier from dim_campaign where app_name = '" + ud['app_name'] + "' order by 1", verbose=False).bundle_identifier.unique()
+    update_uplift_data(uplift_key, 'bundle_a', bundles[0])
+    update_uplift_data(uplift_key, 'bundle_a', bundles[1] if len(bundles) > 1 else bundles[0])
     
     # Pull users lists
     update_uplift_data(uplift_key, 'status', 'pulling_user_lists')
@@ -49,8 +54,8 @@ for uplift_key, ud in uplifts_data.items():
         control_group_size=100*ud['control_group_size'],
         log=log
     )
-    update_uplift_data(uplift_key, 'status', 'computing_uplift')
-    with open('queries/ulift_query.sql') as f:
-        q = f.read()
-    uplift = sql_tools.pull_from_presto(q)
+    update_uplift_data(uplift_key, 'status', 'to_run')
+    # with open('queries/ulift_query.sql') as f:
+    #     q = f.read()
+    # uplift = sql_tools.pull_from_presto(q)
     
