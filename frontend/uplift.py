@@ -87,7 +87,7 @@ def new_uplift():
                 'frequency' : frequency,
                 'controlgroup': controlgroup,
                 'email': email,
-                'status': 'to_run' if not frequency else 'done',
+                'status': 'to_run' if frequency else 'done',
                 'time_added': str(pd.to_datetime('now'))
             }
         with open('../uplifts_data.json', 'w') as f:
