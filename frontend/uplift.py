@@ -5,7 +5,6 @@ from se_tools import sql_tools
 import pandas as pd
 
 def new_uplift():
-    
     # title of app
     st.title('Pull New Uplift')
 
@@ -24,7 +23,7 @@ def new_uplift():
         app_name = st.selectbox('App Name', app_names)
         os = st.radio('OS', ('Android', 'iOS', 'Both'))
         cname = campaign_names(app_name, os)
-        campaign_name = st.multiselect('Campaign IDs', cname)
+        campaign_name = st.multiselect('Campaign Names', cname)
         page = st.radio("One Time or Recurring?", ('One Time', 'Recurring'))
         if page == 'One Time':
             start_date = st.date_input('Start Date')
