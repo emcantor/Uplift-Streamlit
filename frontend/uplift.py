@@ -5,7 +5,6 @@ from se_tools import sql_tools
 import pandas as pd
 
 def new_uplift():
-    
     # title of app
     st.title('Pull New Uplift')
 
@@ -24,7 +23,7 @@ def new_uplift():
         app_name = st.selectbox('App Name', app_names)
         os = st.radio('OS', ('Android', 'iOS', 'Both'))
         cname = campaign_names(app_name, os)
-        campaign_name = st.multiselect('Campaign IDs', cname)
+        campaign_name = st.multiselect('Campaign Names', cname)
         page = st.radio("One Time or Recurring?", ('One Time', 'Recurring'))
         if page == 'One Time':
             start_date = st.date_input('Start Date')
@@ -61,37 +60,23 @@ def new_uplift():
                 "os": os,
                 "page": page,
                 "campaign_names": ','.join(campaign_name),
-                'start_date': '',
-                'end_date' : str(end_date),
-                'end_date_action':  str(end_date_action),
+                'begin_date': str(start_date),
+                'end_date_targeting' : str(end_date),
+                'end_date':  str(end_date_action),
                 'window' : window,
                 'frequency' : frequency,
-                'controlgroup': controlgroup,
+                'control_group_size': controlgroup,
                 'email': email,
-                'status': 'to_run' if not frequency else 'done'
+                'status': 'done' if frequency else 'to_run',
+                'time_added': str(pd.to_datetime('now'))
             }
         # Create unique uplift key
         uplift_key = str(abs(hash(frozenset(str(params.items()) + str(pd.Timestamp.now())))))
         with open('../uplifts_data.json') as json_file:
             uplifts_data = json.load(json_file)
-        uplifts_data[uplift_key] = {
-                "pre_post": pre_post,
-                "app_name": app_name,
-                "os": os,
-                "page": page,
-                "campaign_names": ','.join(campaign_name),
-                'start_date': '',
-                'end_date' : str(end_date),
-                'end_date_action':  str(end_date_action),
-                'window' : window,
-                'frequency' : frequency,
-                'controlgroup': controlgroup,
-                'email': email,
-                'status': 'to_run' if frequency else 'done',
-                'time_added': str(pd.to_datetime('now'))
-            }
+        uplifts_data[uplift_key] = params
         with open('../uplifts_data.json', 'w') as f:
-            json.dump(uplifts_data, f)
+            json.dump(uplifts_data, f, ensure_ascii=False)
         if frequency:
             with open('../scheduled.txt', 'a') as f:
                 f.write('\n')
