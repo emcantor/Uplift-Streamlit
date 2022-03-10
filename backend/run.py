@@ -31,31 +31,48 @@ for uplift_key, ud in uplifts_data.items():
         continue
     
     # Create raw_data folder and logfile
-    os.mkdir('raw_data/' + uplift_key)
+    if not os.path.exists('raw_data/' + uplift_key):
+        os.mkdir('raw_data/' + uplift_key)
     open('../logs/' + uplift_key + '.log', 'a').close()
     logging.basicConfig(level=logging.INFO, filename='../logs/' + uplift_key + '.log', filemode='w', format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     log = logging.getLogger(__name__)
     
-    # Pull bundle_ids
+    # Pull bundle_ids and campaign_ids
     bundles = sql_tools.pull_from_presto("select os, bundle_identifier from dim_campaign where app_name = '" + ud['app_name'] + "' order by 1", verbose=False).bundle_identifier.unique()
     update_uplift_data(uplift_key, 'bundle_a', bundles[0])
-    update_uplift_data(uplift_key, 'bundle_a', bundles[1] if len(bundles) > 1 else bundles[0])
+    update_uplift_data(uplift_key, 'bundle_i', bundles[1] if len(bundles) > 1 else bundles[0])
+    cids = sql_tools.pull_from_presto("select campaign_id from dim_campaign where campaign_name in ('" + "','".join(ud['campaign_names']) + "') order by 1", verbose=False).campaign_id.unique()
+    print(cids)
+    update_uplift_data(uplift_key, 'campaign_ids', list(cids))
     
     # Pull users lists
-    update_uplift_data(uplift_key, 'status', 'pulling_user_lists')
+    # update_uplift_data(uplift_key, 'status', 'pulling_user_lists')
+    update_uplift_data(uplift_key, 'progress', 10)
     sql_tools.create_targeted_users_table(
         start_date = ud['begin_date'],
         end_date = ud['end_date_targeting'],
         bundle_ids = [ud['bundle_a'], ud['bundle_i']],
         table_name = '_'.join([ud['bundle_a'], ud['bundle_i']]).replace('.', ''),
         data_local_path = 'raw_data/' + uplift_key + '/',
-        targeting_list_ids = ud['targeting_list_ids'],
         campaign_ids = ud['campaign_ids'],
         control_group_size=100*ud['control_group_size'],
         log=log
     )
-    update_uplift_data(uplift_key, 'status', 'to_run')
-    # with open('queries/ulift_query.sql') as f:
-    #     q = f.read()
-    # uplift = sql_tools.pull_from_presto(q)
     
+    # Pulling uplift raw data
+    update_uplift_data(uplift_key, 'progress', 25)
+    with open('queries/ulift_query.sql') as f:
+        q = f.read()
+        q = q.replace('%begin_date', ud['begin_date'])
+        q = q.replace('%end_date_targeting', ud['end_date_targeting'])
+        q = q.replace('%end_date', ud['end_date'])
+        q = q.replace('%bundle_a', ud['bundle_a'])
+        q = q.replace('%bundle_i', ud['bundle_i'])
+        q = q.replace('%table_name', '_'.join([ud['bundle_a'], ud['bundle_i']]).replace('.', ''))
+        q = q.replace('%campaign_ids_e', " and affiliation.campaignid in (" + ",".join([str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) >0 else "")
+        q = q.replace('%campaign_ids', " and dc.campaign_id in (" + ",".join([str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) >0 else "")
+        log.info(q)
+            
+    uplift = sql_tools.pull_from_presto(q, verbose=False)
+    update_uplift_data(uplift_key, 'progress', 70)
+    update_uplift_data(uplift_key, 'status', 'to_run')
