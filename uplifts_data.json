@@ -1,1 +1,38 @@
-{"9010363821686147377": {"pre_post": "postlaunch", "app_name": "UNO!\u2122", "os": "Both", "page": "One Time", "campaign_names": "", "begin_date": "2022-03-10", "end_date_targeting": "2022-03-10", "end_date": "2022-03-10", "window": null, "frequency": null, "control_group_size": 20, "email": "", "status": "to_run", "time_added": "2022-03-10 23:32:57.667788", "bundle_a": "com.matteljv.uno", "bundle_i": "com.mattel163.uno", "campaign_ids": [], "progress": 70}}
+{
+  "9010363821686147377": {
+    "pre_post": "postlaunch",
+    "app_name": "UNO!™",
+    "os": "Both",
+    "page": "One Time",
+    "campaign_names": "",
+    "begin_date": "2022-03-10",
+    "end_date_targeting": "2022-03-10",
+    "end_date": "2022-03-10",
+    "window": null,
+    "frequency": null,
+    "control_group_size": 20,
+    "email": "",
+    "status": "to_run",
+    "time_added": "2022-03-10 23:32:57.667788",
+    "bundle_a": "com.matteljv.uno",
+    "bundle_i": "com.mattel163.uno",
+    "campaign_ids": [],
+    "progress": 70
+  },
+  "5240121208589798374": {
+    "pre_post": "postlaunch",
+    "app_name": "UNO!™",
+    "os": "Both",
+    "page": "Recurring",
+    "campaign_names": "",
+    "begin_date": "False",
+    "end_date_targeting": "None",
+    "end_date": "None",
+    "window": 7,
+    "frequency": "Daily",
+    "control_group_size": 10,
+    "email": "",
+    "status": "recurring",
+    "time_added": "2022-03-11 00:47:49.630243"
+  }
+}
