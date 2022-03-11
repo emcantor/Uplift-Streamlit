@@ -23,16 +23,17 @@ def run_uplift(uplift_key):
     
 
 for k, v in uplifts_data.items():
+    minute = v['time_added'][14:].split('.')[0]
     if v['frequency'] == 'Daily':
-        schedule.every().day.at(v['time_added']).do(run_uplift, uplift_key=k)
+        schedule.every().day.at(minute).do(run_uplift, uplift_key=k)
     elif v['frequency'] == 'Weekly':
-        schedule.every().monday.at(v['time_added']).do(run_uplift, uplift_key=k)
+        schedule.every().monday.at(minute).do(run_uplift, uplift_key=k)
     elif v['frequency'] == 'BiWeekly':
-        schedule.every(2).monday.at(v['time_added']).do(run_uplift, uplift_key=k)
+        schedule.every(2).monday.at(minute).do(run_uplift, uplift_key=k)
     elif v['frequency'] == 'Monthly':
-        schedule.every().month.at(v['time_added']).do(run_uplift, uplift_key=k)
+        schedule.every(4).monday.at(minute).do(run_uplift, uplift_key=k)
     elif v['frequency'] == 'Minute':
-        schedule.every().minute.at(":00").do(run_uplift, uplift_key=k)
+        schedule.every().minute.at(minute).do(run_uplift, uplift_key=k)
             
     
 while 1: 

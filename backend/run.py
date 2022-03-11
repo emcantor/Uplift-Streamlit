@@ -42,8 +42,14 @@ for uplift_key, ud in uplifts_data.items():
     update_uplift_data(uplift_key, 'bundle_a', bundles[0])
     update_uplift_data(uplift_key, 'bundle_i', bundles[1] if len(bundles) > 1 else bundles[0])
     cids = sql_tools.pull_from_presto("select campaign_id from dim_campaign where campaign_name in ('" + "','".join(ud['campaign_names']) + "') order by 1", verbose=False).campaign_id.unique()
-    print(cids)
     update_uplift_data(uplift_key, 'campaign_ids', list(cids))
+    
+    # Set dates if recurring
+    if ud['frequency'] != "None":
+        update_uplift_data(uplift_key, 'begin_date', str((pd.to_datetime('today') - pd.Timedelta(ud['window'], 'd')).date()))
+        update_uplift_data(uplift_key, 'end_date', str(pd.to_datetime('today').date()))
+        update_uplift_data(uplift_key, 'end_date_targeting', str(pd.to_datetime('today').date()))
+    
     
     # Pull users lists
     # update_uplift_data(uplift_key, 'status', 'pulling_user_lists')
@@ -75,4 +81,4 @@ for uplift_key, ud in uplifts_data.items():
             
     uplift = sql_tools.pull_from_presto(q, verbose=False)
     update_uplift_data(uplift_key, 'progress', 70)
-    update_uplift_data(uplift_key, 'status', 'to_run')
+    update_uplift_data(uplift_key, 'status', 'recurring' if ud['frequency'] != "None" else "to_run")

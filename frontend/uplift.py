@@ -1,6 +1,6 @@
 import streamlit as st
+import ast
 import json
-import gspread
 from se_tools import sql_tools
 import pandas as pd
 
@@ -19,7 +19,7 @@ def new_uplift():
 
     with st.container():
         pre_post = st.selectbox('Pre Or Post Launch',('postlaunch', 'prelaunch'))
-        app_names = sql_tools.pull_from_presto("select distinct app_name from dim_campaign order by 1")
+        app_names = sql_tools.pull_from_presto("select distinct app_name from dim_campaign order by 1", verbose=False)
         app_name = st.selectbox('App Name', app_names)
         os = st.radio('OS', ('Android', 'iOS', 'Both'))
         cname = campaign_names(app_name, os)
@@ -67,7 +67,7 @@ def new_uplift():
                 'frequency' : frequency,
                 'control_group_size': controlgroup,
                 'email': email,
-                'status': 'done' if frequency else 'to_run',
+                'status': 'recurring' if frequency else 'to_run',
                 'time_added': str(pd.to_datetime('now'))
             }
         # Create unique uplift key
