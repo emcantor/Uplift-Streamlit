@@ -56,6 +56,7 @@ def new_uplift():
 
         controlgroup = st.slider('Control Group Size', step=10, min_value=0, max_value=30, value=20)            
         email = st.text_input('Email', placeholder='Separate Emails With Comma')
+        email = email.split(',')
 
         if page == 'One Time':
             st.button('Pull', on_click=lambda: to_json())
@@ -70,7 +71,7 @@ def new_uplift():
                 "app_name": app_name,
                 "os": os,
                 "page": page,
-                "campaign_names": ','.join(campaign_name),
+                "campaign_names": campaign_name,
                 'begin_date': str(start_date),
                 'end_date_targeting' : str(end_date),
                 'end_date':  str(end_date_action),
