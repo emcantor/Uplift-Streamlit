@@ -16,10 +16,21 @@ def new_uplift():
             os = "'" + os.upper() + "'"
         df = sql_tools.pull_from_presto("select distinct campaign_name from dim_campaign where app_name = '" + app_name + "' and os in (" +  os + ")", verbose=False)
         return df
+    
+    @st.cache
+    def app_name_function(company):
+        df = sql_tools.pull_from_presto(f"select distinct app_name from dim_campaign dc inner join dim_bundle_identifier dbi on dc.bundle_identifier = dbi.bundle_identifier inner join dim_company dco on dco.company_id = dbi.company_id where company_name = '{company}'", verbose=False)
+        return df
+
+    @st.cache
+    def company_name_function():
+        df = sql_tools.pull_from_presto("select distinct company_name from dim_company", verbose=False)
+        return df
 
     with st.container():
         pre_post = st.selectbox('Pre Or Post Launch',('postlaunch', 'prelaunch'))
-        app_names = sql_tools.pull_from_presto("select distinct app_name from dim_campaign order by 1", verbose=False)
+        comp_name = st.selectbox('Company Name', company_name_function())
+        app_names = app_name_function(comp_name)
         app_name = st.selectbox('App Name', app_names)
         os = st.radio('OS', ('Android', 'iOS', 'Both'))
         cname = campaign_names(app_name, os)
@@ -44,7 +55,7 @@ def new_uplift():
             end_date_action = None
 
         controlgroup = st.slider('Control Group Size', step=10, min_value=0, max_value=30, value=20)            
-        email = st.text_input('Email')
+        email = st.text_input('Email', placeholder='Separate Emails With Comma')
 
         if page == 'One Time':
             st.button('Pull', on_click=lambda: to_json())
