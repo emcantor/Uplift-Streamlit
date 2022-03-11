@@ -1,5 +1,5 @@
 import json
-from se_tools import sql_tools
+from se_tools import sql_tools, gsheet_tools
 import pandas as pd
 import os
 import logging
@@ -67,7 +67,7 @@ for uplift_key, ud in uplifts_data.items():
     
     # Pulling uplift raw data
     update_uplift_data(uplift_key, 'progress', 25)
-    with open('queries/ulift_query.sql') as f:
+    with open('queries/uplift_query.sql') as f:
         q = f.read()
         q = q.replace('%begin_date', ud['begin_date'])
         q = q.replace('%end_date_targeting', ud['end_date_targeting'])
@@ -82,3 +82,40 @@ for uplift_key, ud in uplifts_data.items():
     uplift = sql_tools.pull_from_presto(q, verbose=False)
     update_uplift_data(uplift_key, 'progress', 70)
     update_uplift_data(uplift_key, 'status', 'recurring' if ud['frequency'] != "None" else "to_run")
+    
+    # Creating output
+    gc = gsheet_tools.authenticate()
+    template = gc.open_by_key("1-t0SPjI_VQRBdl9xgE5g3q8EIxEGQruJu3TC7FQyNQs")
+
+    wks_name = 'Incrementality Reporting - ' + \
+        ud['company_name'] + ' | ' + \
+        ' - ' + ud['app_name'] + ' ' + \
+        ud['begin_date'] + ' - ' + ud['end_date']
+    spreadsheet = gc.copy(template.id, uplift_key)
+    spreadsheet.values_clear("raw!A:Z")
+    spreadsheet.worksheet('raw').update([uplift.columns.values.tolist(
+        )] + uplift.values.tolist(), value_input_option='USER_ENTERED')
+
+    # Updating headers
+    sheet = spreadsheet.worksheet('ARPU')
+    to_update = dict({
+        'D5': ud['begin_date'],
+        'E5': ud['end_date_targeting'],
+        'F5': ud['end_date'],
+        'G5': ud['app_name'],
+        'H5': uplift.custom_action.unique()[0],
+        'I5': ud['control_group_size']
+    })
+    sheet.batch_update([{'range': key, 'values': [[value]]} for key, value in to_update.items()])
+
+    log.info('Changing permissions to all Adikteev company...')
+    spreadsheet.share('adikteev.com', perm_type='domain',
+                      role='writer', notify=False)
+    for recipient in ud['email']:
+        if '@' in recipient:
+            log.info('Sharing report with' + recipient)
+            spreadsheet.share(recipient.strip(), perm_type='user',
+                              role='writer', notify=True, email_message='Uplift output for ' + wks_name)
+
+    update_uplift_data(uplift_key, 'url', "https://docs.google.com/spreadsheets/d/%s" % spreadsheet.id)
+     
