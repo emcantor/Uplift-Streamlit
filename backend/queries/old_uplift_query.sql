@@ -1,4 +1,45 @@
-with exposed as (
+with wl as (
+    select
+        distinct t.date,
+        dtl.campaign_id,
+        t.variant,
+        t.device_id
+    from
+        bi_sandbox.% table_name t
+        inner join experimental.history_dim_targeting_list dtl on dtl.targeting_list_id = t.targeting_list_id
+        and dtl.partition_0 = t.date
+        inner join experimental.history_dim_campaign dc on dc.campaign_id = dtl.campaign_id
+        and dtl.partition_0 = dc.partition_0
+    where
+        targeting_list_type = 'white'
+        and date(dtl.partition_0) between date('%begin_date')
+        and date('%end_date_targeting')
+        and date(dc.partition_0) between date('%begin_date')
+        and date('%end_date_targeting')
+        and device_id is not Null
+        and bundle_identifier in ('%bundle_a', '%bundle_i') % campaign_ids
+),
+bl as (
+    select
+        distinct t.date,
+        dtl.campaign_id,
+        t.device_id
+    from
+        bi_sandbox.% table_name t
+        inner join experimental.history_dim_targeting_list dtl on dtl.targeting_list_id = t.targeting_list_id
+        and dtl.partition_0 = t.date
+        inner join experimental.history_dim_campaign dc on dc.campaign_id = dtl.campaign_id
+        and dtl.partition_0 = dc.partition_0
+    where
+        targeting_list_type = 'black'
+        and date(dtl.partition_0) between date('%begin_date')
+        and date('%end_date_targeting')
+        and date(dc.partition_0) between date('%begin_date')
+        and date('%end_date_targeting')
+        and device_id is not Null
+        and bundle_identifier in ('%bundle_a', '%bundle_i') % campaign_ids
+),
+exposed as (
     select
         distinct affiliation.campaignid as campaign_id,
         generic.device.ifa.plain as device_id
@@ -7,18 +48,23 @@ with exposed as (
     where
         date(dt) between date('%begin_date')
         and date('%end_date_targeting')
-        and generic.bundleidentifier in ('%bundle_a', '%bundle_i') %campaign_ids_e
+        and generic.bundleidentifier in ('%bundle_a', '%bundle_i') % campaign_ids_e
 ),
 users as (
     select
-        t.date,
-        t.campaign_id,
-        t.device_id,
-        case when exposed.device_id is not null then 'exposed' else t.variant end as variant
+        wl.date,
+        wl.campaign_id,
+        wl.device_id,
+        case when exposed.device_id is not null then 'exposed' else variant end as variant
     from
-        bi_sandbox.%table_name_processed t
-        left join exposed on t.campaign_id = exposed.campaign_id
-        and exposed.device_id = t.device_id
+        wl
+        left join bl on wl.date = bl.date
+        and wl.campaign_id = bl.campaign_id
+        and wl.device_id = bl.device_id
+        left join exposed on wl.campaign_id = exposed.campaign_id
+        and exposed.device_id = wl.device_id
+    where
+        bl.device_id is Null
 ),
 count_users as (
     select
@@ -28,7 +74,7 @@ count_users as (
     from
         users
     where
-        variant in ('control', 'targeted', 'exposed')
+        variant in ('control', 'targeted')
     group by
         1,
         2
@@ -112,14 +158,16 @@ rtb as (
 cost as (
     select
         drc.campaign_id,
-        round(coalesce(sum(client_cost_usd), 0), 2) as total_cost
+        sum(client_cost_usd) as cost
     from
         dsp_revenue_costs drc
-        inner join dim_campaign dc on drc.campaign_id = dc.campaign_id
+        inner join experimental.history_dim_campaign dc on drc.campaign_id = dc.campaign_id
     where
         dt between '%begin_date'
         and '%end_date_targeting'
-        and bundle_identifier in ('%bundle_a', '%bundle_i') %campaign_ids
+        and partition_0 between '%begin_date'
+        and '%end_date_targeting'
+        and bundle_identifier in ('%bundle_a', '%bundle_i') % campaign_ids
     group by
         1
 ),
@@ -144,7 +192,7 @@ data as (
         ) as unique_users_with_custom_action,
         coalesce(sum(count_events), 0) as count,
         coalesce(sum(revenue_usd), 0) as revenue,
-        total_cost
+        coalesce(sum(c.cost), 0) as total_cost
     from
         users
         inner join experimental.history_dim_campaign dc on dc.campaign_id = users.campaign_id
@@ -166,8 +214,7 @@ data as (
         6,
         7,
         8,
-        9,
-        13
+        9
 )
 select
     coalesce(rtb_active, 'all_users') as rtb_active,
@@ -194,7 +241,7 @@ select
         sum(revenue) / nullif(sum(total_unique_users), 0),
         0
     ) as arpu,
-    total_cost
+    sum(total_cost) as total_cost
 from
     data
 group by
@@ -205,5 +252,4 @@ group by
     5,
     6,
     7,
-    8,
-    16
+    8
