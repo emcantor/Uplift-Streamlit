@@ -1,7 +1,7 @@
 import json
-from se_tools import sql_tools, gsheet_tools
-import pandas as pd
+from se_tools import sql_tools, gsheet_tools, s3_tools
 import os
+import shutil
 import logging
 import traceback
 
@@ -22,7 +22,7 @@ def update_uplift_data(uplift_key, key, data):
     uplifts_data[uplift_key][key] = data
     with open(uplifts_data_json_path, 'w') as f:
         json.dump(uplifts_data, f)
-    return ud
+    return uplifts_data
 
 
 for uplift_key, ud in uplifts_data.items():
@@ -44,17 +44,7 @@ for uplift_key, ud in uplifts_data.items():
                             format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         log = logging.getLogger(__name__)
 
-        # Pull bundle_ids and campaign_ids
-        bundles = sql_tools.pull_from_presto("select os, bundle_identifier from dim_campaign where app_name = '" +
-                                             ud['app_name'] + "' order by 1", verbose=False).bundle_identifier.unique()
-        update_uplift_data(uplift_key, 'bundle_a', bundles[0])
-        update_uplift_data(uplift_key, 'bundle_i',
-                           bundles[1] if len(bundles) > 1 else bundles[0])
-        cids = sql_tools.pull_from_presto("select campaign_id from dim_campaign where campaign_name in ('" + "','".join(
-            ud['campaign_names']) + "') order by 1", verbose=False).campaign_id.unique()
-        update_uplift_data(uplift_key, 'campaign_ids', [str(c) for c in cids])
-
-        # Set dates if recurring
+        # Hardcode dates if frequency_type=recurring
         if ud['frequency'] != "None" and ud['frequency'] != None:
             update_uplift_data(uplift_key, 'begin_date', str(
                 (pd.to_datetime('today') - pd.Timedelta(ud['window'], 'd')).date()))
@@ -67,7 +57,7 @@ for uplift_key, ud in uplifts_data.items():
         # update_uplift_data(uplift_key, 'status', 'pulling_user_lists')
         table_name = '_'.join(
             [ud['bundle_a'], ud['bundle_i']]).replace('.', '').replace('-', '')
-        update_uplift_data(uplift_key, 'progress', 10)
+        update_uplift_data(uplift_key, 'status', '10%')
         sql_tools.create_targeted_users_table(
             start_date=ud['begin_date'],
             end_date=ud['end_date_targeting'],
@@ -81,37 +71,49 @@ for uplift_key, ud in uplifts_data.items():
         )
 
         # Pulling uplift raw data
-        update_uplift_data(uplift_key, 'progress', 25)
-        with open('queries/uplift_query.sql') as f:
-            q = f.read()
-            q = q.replace('%begin_date', ud['begin_date'])
-            q = q.replace('%end_date_targeting', ud['end_date_targeting'])
-            q = q.replace('%end_date', ud['end_date'])
-            q = q.replace('%bundle_a', ud['bundle_a'])
-            q = q.replace('%bundle_i', ud['bundle_i'])
-            q = q.replace('%table_name', table_name)
-            q = q.replace('%campaign_ids_e', " and affiliation.campaignid in (" + ",".join(
-                [str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) > 0 else "")
-            q = q.replace('%campaign_ids', " and dc.campaign_id in (" + ",".join(
-                [str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) > 0 else "")
-            log.info(q)
+        update_uplift_data(uplift_key, 'status', '25%')
+        queries = {}
+        for query_file in os.listdir('queries/'):
+            with open('queries/' + query_file) as f:
+                q = f.read()
+                q = q.replace('%begin_date', ud['begin_date'])
+                q = q.replace('%end_date_targeting', ud['end_date_targeting'])
+                q = q.replace('%end_date', ud['end_date'])
+                q = q.replace('%bundle_a', ud['bundle_a'])
+                q = q.replace('%bundle_i', ud['bundle_i'])
+                q = q.replace('%table_name', table_name)
+                q = q.replace('%campaign_ids_e', " and affiliation.campaignid in (" + ",".join(
+                    [str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) > 0 else "")
+                q = q.replace('%campaign_ids_dc', " and dc.campaign_id in (" + ",".join(
+                    [str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) > 0 else "")
+                q = q.replace('%campaign_ids_t', " and t.campaign_id in (" + ",".join(
+                    [str(c) for c in ud['campaign_ids']]) + ")" if len(ud['campaign_ids']) > 0 else "")
 
-        uplift = sql_tools.pull_from_presto(q, verbose=False).fillna('')
-        update_uplift_data(uplift_key, 'progress', 70)
+        # users = 
+        exposed= sql_tools.create_or_update_presto_table_from_query(
+            q['exposed.sql'])
+        users_exposed_rollup = sql_tools.create_or_update_presto_table_from_query(
+            q['users_exposed_rollup.sql'])
+
+        campaign_platform_rollup_tt = sql_tools.create_presto_table(
+            df=None, query=queries['campaign_platform_rollup.sql'], verbose=False)
+        cost_platform_rollup_tt = sql_tools.create_presto_table(
+            df=None, query=queries['cost_platform_rollup.sql'], verbose=False)
+
+        queries['uplift.sql'] = queries['uplift.sql'].replace('%cost_platform_rollup_tt', cost_platform_rollup_tt).replace(
+            '%campaign_platform_rollup_tt', campaign_platform_rollup_tt)
+        log.info(queries['uplift.sql'])
+        uplift = sql_tools.pull_from_presto(
+            queries['uplift.sql'], verbose=False).fillna('')
+        update_uplift_data(uplift_key, 'status', '70%')
 
         # Creating output
         gc = gsheet_tools.authenticate()
         template = gc.open_by_key(
             "1-t0SPjI_VQRBdl9xgE5g3q8EIxEGQruJu3TC7FQyNQs")
 
-        # wks_name = 'Incrementality Reporting - ' + \
-        #     ud['company_name'] + ' | ' + \
-        #     ' - ' + ud['app_name'] + ' ' + \
-        #     ud['begin_date'] + ' - ' + ud['end_date']
-        wks_name = 'Incrementality Reporting - ' + \
-            ' | ' + \
-            ' - ' + ud['app_name'] + ' ' + \
-            ud['begin_date'] + ' - ' + ud['end_date']
+        wks_name = 'Incrementality Reporting ' + ' | ' + \
+            ud['app_name'] + ' ' + ud['begin_date'] + ' - ' + ud['end_date']
         spreadsheet = gc.copy(template.id, wks_name)
         spreadsheet.values_clear("raw!A:Z")
         spreadsheet.worksheet('raw').update([uplift.columns.values.tolist(
@@ -125,7 +127,7 @@ for uplift_key, ud in uplifts_data.items():
             'F5': ud['end_date'],
             'G5': ud['app_name'],
             'H5': uplift.custom_action.unique()[0] if len(uplift.custom_action.unique()) > 0 else 'NO_DATA',
-            'I5': ud['control_group_size']
+            'I5': ud['control_group_size'] / 100
         })
         sheet.batch_update([{'range': key, 'values': [[value]]}
                             for key, value in to_update.items()])
@@ -139,21 +141,36 @@ for uplift_key, ud in uplifts_data.items():
                 spreadsheet.share(recipient.strip(), perm_type='user',
                                   role='writer', notify=True, email_message='Uplift output for ' + wks_name)
 
+        url = "https://docs.google.com/spreadsheets/d/%s" % spreadsheet.id
         update_uplift_data(
-            uplift_key, 'url', "https://docs.google.com/spreadsheets/d/%s" % spreadsheet.id)
+            uplift_key, 'url', url)
 
-        update_uplift_data(uplift_key, 'progress', 100)
         update_uplift_data(uplift_key, 'status',
-                           'recurring' if ud['frequency'] != "None" and ud['frequency'] != None else "done")
-        update_uplift_data(uplift_key, 'error_massage', '')
+                           "done")
+        update_uplift_data(uplift_key, 'error_message', '')
         if ud['frequency'] != "None" and ud['frequency'] != None:
             past_uplifts = {
             } if not 'past_uplift' in ud else ud['past_uplifts']
-            past_uplifts[str(pd.to_datetime('today').date())] = 'url'
+            past_uplifts[str(pd.to_datetime('today').date())] = url
             update_uplift_data(uplift_key, 'past_uplifts', past_uplifts)
+
+        log.info('Pulling raw data')
+        raw_data_paths = {}
+        for query_file in ['events', 'exposed', 'users']:
+            output_name = query_file + '_raw_data.csv'
+            raw = sql_tools.pull_from_presto(
+                queries[query_file + '.sql'], verbose=False)
+            raw.to_csv('raw_data/' + uplift_key +
+                       '/' + output_name, index=None)
+            s3_tools.upload_s3_file('raw_data/' + uplift_key + '/' + output_name,
+                                    's3://sandbox-adikteev/uplift_raw_data/uplift_v3/' + uplift_key + '/' + output_name, make_public=True)
+            raw_data_paths[output_name] = 'https://sandbox-adikteev.s3.amazonaws.com/uplift_raw_data/uplift_v3/' + \
+                uplift_key + '/' + output_name
+        update_uplift_data(uplift_key, 'raw_data_s3_paths', raw_data_paths)
+        shutil.rmtree('raw_data/' + uplift_key)
 
     except Exception as e:
         update_uplift_data(uplift_key, 'status', "failed")
         log.info(e)
         log.info(traceback.format_exc())
-        update_uplift_data(uplift_key, 'error_massage', traceback.format_exc())
+        update_uplift_data(uplift_key, 'error_message', traceback.format_exc())
