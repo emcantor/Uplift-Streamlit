@@ -22,6 +22,7 @@ def run_uplift(uplift_key):
     with open('../uplifts_data.json', 'w') as f:
         json.dump(uplifts_data, f)
 
+
 def set_dow(schedule, dow):
     if dow == 'Monday':
         return schedule.monday
@@ -33,7 +34,7 @@ def set_dow(schedule, dow):
         return schedule.thursday
     elif dow == 'Friday':
         return schedule.friday
-    
+
 
 for k, v in uplifts_data.items():
     hour = v['time_added'][11:].split('.')[0][:5]

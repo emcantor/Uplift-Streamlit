@@ -5,8 +5,8 @@ with exposed as (
     from
         impressions
     where
-        date(dt) between date('%begin_date')
-        and date('%end_date_targeting')
+        dt between '%begin_date'
+        and '%end_date_targeting'
         and generic.bundleidentifier in ('%bundle_a', '%bundle_i') %campaign_ids_e
 ),
 users as (
@@ -19,6 +19,10 @@ users as (
         bi_sandbox.%table_name_processed t
         left join exposed on t.campaign_id = exposed.campaign_id
         and exposed.device_id = t.device_id
+    where 
+        t.date between '%begin_date'
+        and '%end_date_targeting'
+        %campaign_ids_t
 ),
 count_users as (
     select
@@ -119,7 +123,7 @@ cost as (
     where
         dt between '%begin_date'
         and '%end_date_targeting'
-        and bundle_identifier in ('%bundle_a', '%bundle_i') %campaign_ids
+        and bundle_identifier in ('%bundle_a', '%bundle_i') %campaign_ids_dc
     group by
         1
 ),

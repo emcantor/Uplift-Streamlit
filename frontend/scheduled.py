@@ -21,15 +21,14 @@ def scheduled():
 
     df_all = pd.read_json('../uplifts_data.json',
                           orient='index').reset_index(drop=True)
-    df_all['time_added'] = pd.to_datetime(df_all['time_added']).apply(
-        lambda x: x.replace(microsecond=0)).astype(str)
+
     # https://stackoverflow.com/questions/69578431/how-to-fix-streamlitapiexception-expected-bytes-got-a-int-object-conver
     df_all['campaign_names'] = df_all['campaign_names'].astype(str)
     df_all['uplift_key'] = df_all['uplift_key'].astype(float)
 
     df = pd.merge(df_scheduled, df_all, how='inner', on='uplift_key')
 
-    preview_cols = ['app_name', 'time_added',
+    preview_cols = ['selling_entity', 'app_name', 'date_added',
                     'window', 'frequency', 'dow', 'url']
 
     gb = GridOptionsBuilder.from_dataframe(df[preview_cols])
